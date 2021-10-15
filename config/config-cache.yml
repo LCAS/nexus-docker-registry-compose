@@ -6,11 +6,10 @@ storage:
   cache:
     blobdescriptor: inmemory
   filesystem:
-    rootdirectory: /var/lib/registry/registry
+    rootdirectory: /var/lib/registry
 http:
   addr: :5000
-  #prefix: /registry/
-  relativeurls: true
+  prefix: /registry-mirror/
   headers:
     X-Content-Type-Options: [nosniff]
 health:
@@ -18,5 +17,9 @@ health:
     enabled: true
     interval: 10s
     threshold: 3
+proxy:
+  remoteurl: https://registry-1.docker.io
+  username: strands
+  password: 29924625-56ac-4f7a-9ff3-58177b1a68a8
 #auth:
 #  false

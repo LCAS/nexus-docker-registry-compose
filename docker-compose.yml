@@ -1,6 +1,16 @@
 version: '3.3'
 
 services:
+  nexus:
+    image: sonatype/nexus3:3.37.0
+    restart: always
+    ports:
+      - 8083:8081
+      - 8089:8888
+    environment:
+      - "NEXUS_CONTEXT=repository"
+    volumes:
+      - /vol/owncloud/REGISTRY_DATA/nexus-data:/nexus-data
   registry-own:
     container_name: registry
     restart: always

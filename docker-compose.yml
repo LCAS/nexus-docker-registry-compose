@@ -1,7 +1,7 @@
 services:
   nexus:
     image: sonatype/nexus3:3.69.0
-    restart: always
+    restart: unless-stopped
     ports:
       - 8083:8081
       - 8089:8888
@@ -11,9 +11,31 @@ services:
       - ./data/nexus-data:/nexus-data
   nexus_aoc:
     image: sonatype/nexus3:3.72.0
-    restart: always
+    restart: unless-stopped
     ports:
       - 9083:8081
       - 9089:8888
     volumes:
       - ./data/nexus-data-aoc:/nexus-data
+  zrok_repo:
+      image: openziti/zrok
+      restart: unless-stopped
+      user: "1001"
+      volumes:
+        - ${HOME}/.zrok:/.zrok
+      environment:
+          PFXLOG_NO_JSON: "true"
+      command: share reserved "aocrepo" --headless
+      links:
+        - nexus_aoc
+  zrok_registry:
+      image: openziti/zrok
+      restart: unless-stopped
+      user: "1001"
+      volumes:
+        - ${HOME}/.zrok:/.zrok
+      environment:
+          PFXLOG_NO_JSON: "true"
+      command: share reserved "aoccr" --headless
+      links:
+        - nexus_aoc

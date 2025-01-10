@@ -24,6 +24,7 @@ services:
       volumes:
         - ${HOME}/.zrok:/.zrok
       environment:
+          HOME: "/"
           PFXLOG_NO_JSON: "true"
       command: share reserved "aocrepo" --headless
       links:
@@ -35,7 +36,23 @@ services:
       volumes:
         - ${HOME}/.zrok:/.zrok
       environment:
+          HOME: "/"
           PFXLOG_NO_JSON: "true"
       command: share reserved "aoccr" --headless
       links:
         - nexus_aoc
+  registry_frontend_lcas:
+    image: klausmeyer/docker-registry-browser:latest
+    environment:
+      - 'DOCKER_REGISTRY_URL=http://nexus:8888'
+      - PUBLIC_REGISTRY_URL=lcas.lincoln.ac.uk
+      - 'SECRET_KEY_BASE=/AtOvCMBJedRBX+g'
+      - ENABLE_COLLAPSE_NAMESPACES=true
+      - ENABLE_DELETE_IMAGES=false
+      - SCRIPT_NAME=/docker-images
+      - RAILS_RELATIVE_URL_ROOT=/docker-images
+
+    ports:
+      - '9080:8080'
+    links:
+      - nexus

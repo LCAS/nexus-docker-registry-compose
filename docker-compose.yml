@@ -41,6 +41,31 @@ services:
       command: share reserved "aoccr" --headless
       links:
         - nexus_aoc
+  zrok_jabas_repo:
+      image: openziti/zrok
+      restart: unless-stopped
+      user: "1001"
+      volumes:
+        - ./zrok-jabas/.zrok:/.zrok:ro
+      environment:
+          HOME: "/"
+          PFXLOG_NO_JSON: "true"
+      command: share reserved "nexus" --headless --override-endpoint http://nexus_aoc:8081
+      links:
+        - nexus_aoc
+  zrok_jabas_registry:
+      image: openziti/zrok
+      restart: unless-stopped
+      user: "1001"
+      volumes:
+        - ./zrok-jabas/.zrok:/.zrok:ro
+      environment:
+          HOME: "/"
+          PFXLOG_NO_JSON: "true"
+      command: share reserved "registry" --headless --override-endpoint http://nexus_aoc:8888
+      links:
+        - nexus_aoc
+
   registry_frontend_lcas:
     image: klausmeyer/docker-registry-browser:latest
     environment:

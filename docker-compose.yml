@@ -68,11 +68,12 @@ services:
 
   registry_frontend_lcas:
     image: klausmeyer/docker-registry-browser:latest
+    restart: unless-stopped
     environment:
       - 'DOCKER_REGISTRY_URL=http://nexus:8888'
       - PUBLIC_REGISTRY_URL=lcas.lincoln.ac.uk
       - 'SECRET_KEY_BASE=/AtOvCMBJedRBX+g'
-      - ENABLE_COLLAPSE_NAMESPACES=true
+      - ENABLE_COLLAPSE_NAMESPACES=false
       - ENABLE_DELETE_IMAGES=false
       - SCRIPT_NAME=/docker-images
       - RAILS_RELATIVE_URL_ROOT=/docker-images
@@ -81,3 +82,35 @@ services:
       - '9080:8080'
     links:
       - nexus
+
+  registry_frontend_lcas_private:
+    image: klausmeyer/docker-registry-browser:latest
+    restart: unless-stopped
+
+    # .env file example:
+    # BASIC_AUTH_USER=<NAME>
+    # BASIC_AUTH_PASSWORD=<TOKEN>
+    env_file:
+      - .env
+    environment:
+      - 'DOCKER_REGISTRY_URL=http://nexus:8888'
+      - PUBLIC_REGISTRY_URL=lcas.lincoln.ac.uk
+      - 'SECRET_KEY_BASE=/AtOvCMBJedRBX+g'
+      - ENABLE_COLLAPSE_NAMESPACES=false
+      - ENABLE_DELETE_IMAGES=true
+
+    links:
+      - nexus
+
+  registry_frontend_lcas_private_zrok:
+      image: openziti/zrok
+      restart: unless-stopped
+      user: "1001"
+      volumes:
+        - ${HOME}/.zrok:/.zrok
+      environment:
+          HOME: "/"
+          PFXLOG_NO_JSON: "true"
+      command: share reserved "lcasregistry" --headless --override-endpoint http://registry_frontend_lcas_private:8080
+      links:
+        - registry_frontend_lcas_private

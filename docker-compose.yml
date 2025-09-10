@@ -131,36 +131,11 @@ services:
       zrok reserve public -n $${ZROK_NAME} $${OPTIONS} $${BACKEND_URL} &&
       zrok share reserved $${ZROK_NAME} --headless
       "
-
-
-
-    # image: openziti/zrok
-    # restart: unless-stopped
-    # user: "1001"
-    # volumes:
-    #   - ./zrok-jabas/.zrok:/.zrok:ro
-    # environment:
-    #     HOME: "/"
-    #     PFXLOG_NO_JSON: "true"
-    # command: share reserved "nexus" --headless --override-endpoint http://nexus_aoc:8081
-    # links:
-    #   - nexus_aoc
   zrok_jabas_registry:
     extends: zrok_jabas_repo
     environment:
       ZROK_NAME: registry
       BACKEND_URL: http://nexus_aoc:8888
-    # image: openziti/zrok
-    # restart: unless-stopped
-    # user: "1001"
-    # volumes:
-    #   - ./zrok-jabas/.zrok:/.zrok:ro
-    # environment:
-    #     HOME: "/"
-    #     PFXLOG_NO_JSON: "true"
-    # command: share reserved "registry" --headless --override-endpoint http://nexus_aoc:8888
-    # links:
-    #   - nexus_aoc
 
   registry_frontend_lcas:
     image: klausmeyer/docker-registry-browser:latest
@@ -206,17 +181,6 @@ services:
       OPTIONS: "--basic-auth ${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}"
     links:
       - registry_frontend_lcas_private
-  # image: openziti/zrok
-  # restart: unless-stopped
-  # user: "1001"
-  # volumes:
-  #   - ${HOME}/.zrok:/.zrok
-  # environment:
-  #     HOME: "/"
-  #     PFXLOG_NO_JSON: "true"
-  # command: share reserved "lcasregistry" --headless --override-endpoint http://registry_frontend_lcas_private:8080
-  # links:
-  #   - registry_frontend_lcas_private
 
 secrets:
   zrok_token:

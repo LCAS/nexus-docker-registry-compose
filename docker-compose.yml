@@ -17,54 +17,138 @@ services:
       - 9089:8888
     volumes:
       - ./data/nexus-data-aoc:/nexus-data
+
+  zrok_init:
+    image: openziti/zrok:1.0.8
+    volumes:
+      - zrok-data:/zrok/.zrok
+    restart: "no"
+    tty: true
+    environment:
+      HOME: /zrok
+      PFXLOG_NO_JSON: "true"
+    entrypoint: []
+    secrets:
+      - zrok_token
+    user: root
+    command: >
+      bash -c "
+      zrok config set apiEndpoint ${ZROK_API_ENDPOINT} &&
+      (zrok -p disable || true) &&
+      zrok enable -d '${ZROK_ENV_NAME}' $(cat /run/secrets/zrok_token)
+      "
+
+  zrok_jabas_init:
+    extends: zrok_init
+    volumes:
+      - zrok-jabas-data:/zrok/.zrok
+    secrets:
+      - zrok_jabas_token
+    command: >
+      bash -c "
+      zrok config set apiEndpoint ${ZROK_JABAS_API_ENDPOINT} &&
+      (zrok -p disable || true) &&
+      zrok enable -d '${ZROK_ENV_NAME}' $(cat /run/secrets/zrok_jabas_token)
+      "
+
+
   zrok_repo:
-      image: openziti/zrok
-      restart: unless-stopped
-      user: "1001"
-      volumes:
-        - ${HOME}/.zrok:/.zrok
-      environment:
-          HOME: "/"
-          PFXLOG_NO_JSON: "true"
-      command: share reserved "aocrepo" --headless
-      links:
-        - nexus_aoc
+  # currently requires the old version as the server hasn't been updated yet
+    image: openziti/zrok:1.0.8
+    volumes:
+      - zrok-data:/zrok/.zrok
+    restart: unless-stopped
+    environment:
+      HOME: /zrok
+      PFXLOG_NO_JSON: "true"
+      ZROK_NAME: aocrepo
+      BACKEND_URL: http://nexus_aoc:8081
+      OPTIONS: 
+    entrypoint: []
+    tty: true
+    user: root
+    depends_on:
+      zrok_init:
+        condition: service_completed_successfully
+    links:
+      - nexus_aoc
+
+    command: >
+      bash -c "
+
+      trap 'echo Stopping zrok service...; zrok release $${ZROK_NAME} || true; echo Zrok service stopped.' EXIT;
+
+      (zrok release $${ZROK_NAME} || true) &&
+      zrok reserve public -n $${ZROK_NAME} $${OPTIONS} $${BACKEND_URL} &&
+      zrok share reserved $${ZROK_NAME} --headless
+      "
+
   zrok_registry:
-      image: openziti/zrok
-      restart: unless-stopped
-      user: "1001"
-      volumes:
-        - ${HOME}/.zrok:/.zrok
-      environment:
-          HOME: "/"
-          PFXLOG_NO_JSON: "true"
-      command: share reserved "aoccr" --headless
-      links:
-        - nexus_aoc
+    extends: zrok_repo
+    environment:
+      ZROK_NAME: aoccr
+      BACKEND_URL: http://nexus_aoc:8888
+
   zrok_jabas_repo:
-      image: openziti/zrok
-      restart: unless-stopped
-      user: "1001"
-      volumes:
-        - ./zrok-jabas/.zrok:/.zrok:ro
-      environment:
-          HOME: "/"
-          PFXLOG_NO_JSON: "true"
-      command: share reserved "nexus" --headless --override-endpoint http://nexus_aoc:8081
-      links:
-        - nexus_aoc
+  # currently requires the old version as the server hasn't been updated yet
+    image: openziti/zrok:1.0.8
+    volumes:
+      - zrok-jabas-data:/zrok/.zrok
+    restart: unless-stopped
+    environment:
+      HOME: /zrok
+      PFXLOG_NO_JSON: "true"
+      ZROK_NAME: nexus
+      BACKEND_URL: http://nexus_aoc:8081
+      OPTIONS: 
+    entrypoint: []
+    tty: true
+    user: root
+    depends_on:
+      zrok_jabas_init:
+        condition: service_completed_successfully
+    links:
+      - nexus_aoc
+
+    command: >
+      bash -c "
+
+      trap 'echo Stopping zrok service...; zrok release $${ZROK_NAME} || true; echo Zrok service stopped.' EXIT;
+
+      (zrok release $${ZROK_NAME} || true) &&
+      zrok reserve public -n $${ZROK_NAME} $${OPTIONS} $${BACKEND_URL} &&
+      zrok share reserved $${ZROK_NAME} --headless
+      "
+
+
+
+    # image: openziti/zrok
+    # restart: unless-stopped
+    # user: "1001"
+    # volumes:
+    #   - ./zrok-jabas/.zrok:/.zrok:ro
+    # environment:
+    #     HOME: "/"
+    #     PFXLOG_NO_JSON: "true"
+    # command: share reserved "nexus" --headless --override-endpoint http://nexus_aoc:8081
+    # links:
+    #   - nexus_aoc
   zrok_jabas_registry:
-      image: openziti/zrok
-      restart: unless-stopped
-      user: "1001"
-      volumes:
-        - ./zrok-jabas/.zrok:/.zrok:ro
-      environment:
-          HOME: "/"
-          PFXLOG_NO_JSON: "true"
-      command: share reserved "registry" --headless --override-endpoint http://nexus_aoc:8888
-      links:
-        - nexus_aoc
+    extends: zrok_jabas_repo
+    environment:
+      ZROK_NAME: registry
+      BACKEND_URL: http://nexus_aoc:8888
+    # image: openziti/zrok
+    # restart: unless-stopped
+    # user: "1001"
+    # volumes:
+    #   - ./zrok-jabas/.zrok:/.zrok:ro
+    # environment:
+    #     HOME: "/"
+    #     PFXLOG_NO_JSON: "true"
+    # command: share reserved "registry" --headless --override-endpoint http://nexus_aoc:8888
+    # links:
+    #   - nexus_aoc
 
   registry_frontend_lcas:
     image: klausmeyer/docker-registry-browser:latest
@@ -103,14 +187,31 @@ services:
       - nexus
 
   registry_frontend_lcas_private_zrok:
-      image: openziti/zrok
-      restart: unless-stopped
-      user: "1001"
-      volumes:
-        - ${HOME}/.zrok:/.zrok
-      environment:
-          HOME: "/"
-          PFXLOG_NO_JSON: "true"
-      command: share reserved "lcasregistry" --headless --override-endpoint http://registry_frontend_lcas_private:8080
-      links:
-        - registry_frontend_lcas_private
+    extends: zrok_repo
+    environment:
+      ZROK_NAME: lcasregistry
+      BACKEND_URL: http://registry_frontend_lcas_private:8080
+      OPTIONS: "--basic-auth ${BASIC_AUTH_USER}:${BASIC_AUTH_PASSWORD}"
+    links:
+      - registry_frontend_lcas_private
+  # image: openziti/zrok
+  # restart: unless-stopped
+  # user: "1001"
+  # volumes:
+  #   - ${HOME}/.zrok:/.zrok
+  # environment:
+  #     HOME: "/"
+  #     PFXLOG_NO_JSON: "true"
+  # command: share reserved "lcasregistry" --headless --override-endpoint http://registry_frontend_lcas_private:8080
+  # links:
+  #   - registry_frontend_lcas_private
+
+secrets:
+  zrok_token:
+    environment: ZROK_TOKEN
+  zrok_jabas_token:
+    environment: ZROK_JABAS_TOKEN
+
+volumes:
+  zrok-data:
+  zrok-jabas-data:

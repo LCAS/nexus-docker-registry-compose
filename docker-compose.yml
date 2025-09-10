@@ -33,7 +33,13 @@ services:
     user: root
     command: >
       bash -c "
-      zrok config set apiEndpoint ${ZROK_API_ENDPOINT} &&
+      RANDOM_STRING=$$(head /dev/urandom | tr -dc a-z0-9 | head -c 13 ; echo '');
+      if zrok reserve public -n $$RANDOM_STRING http://example.com; then
+        zrok release $$RANDOM_STRING || true;
+        echo 'Zrok environment already initialized and working.';
+        exit 0;
+      fi;
+      zrok config set apiEndpoint ${ZROK_API_ENDPOINT} &&      
       (zrok -p disable || true) &&
       zrok enable -d '${ZROK_ENV_NAME}' $(cat /run/secrets/zrok_token)
       "
@@ -46,6 +52,12 @@ services:
       - zrok_jabas_token
     command: >
       bash -c "
+      RANDOM_STRING=$$(head /dev/urandom | tr -dc a-z0-9 | head -c 13 ; echo '');
+      if zrok reserve public -n $$RANDOM_STRING http://example.com; then
+        zrok release $$RANDOM_STRING || true;
+        echo 'Zrok environment already initialized and working.';
+        exit 0;
+      fi;
       zrok config set apiEndpoint ${ZROK_JABAS_API_ENDPOINT} &&
       (zrok -p disable || true) &&
       zrok enable -d '${ZROK_ENV_NAME}' $(cat /run/secrets/zrok_jabas_token)

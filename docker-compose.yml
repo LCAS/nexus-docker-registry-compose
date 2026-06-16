@@ -12,6 +12,8 @@ services:
   nexus_aoc:
     image: sonatype/nexus3:3.72.0
     restart: unless-stopped
+    environment:
+      - INSTALL4J_ADD_VM_PARAMS=-Xms2703m -Xmx2703m -XX:MaxDirectMemorySize=2703m -Dnexus.jetty.request.maxThreads=500 -Dnexus.jetty.image.pull.timeout=300000 -Dorg.eclipse.jetty.io.IdleTimeout=300000
     ports:
       - 9083:8081
       - 9089:8888
@@ -182,6 +184,28 @@ services:
     links:
       - registry_frontend_lcas_private
 
+  netbird-client:
+    image: netbirdio/netbird:latest
+    restart: unless-stopped
+    # Netbird requires network administration capabilities to manage the VPN interface
+    cap_add:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+    network_mode: "service:nexus_aoc"
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=0
+      - net.ipv6.conf.all.forwarding=1
+    environment:
+      - NB_SETUP_KEY=${NETBIRD_SETUP_KEY}
+      - NB_MANAGEMENT_URL=https://netbird.jabas.ai
+      - NB_HOSTNAME=netbird-nexus-registry-client
+    volumes:
+      - netbird-client-data:/var/lib/netbird
+
+
 secrets:
   zrok_token:
     environment: ZROK_TOKEN
@@ -191,3 +215,4 @@ secrets:
 volumes:
   zrok-data:
   zrok-jabas-data:
+  netbird-client-data:
